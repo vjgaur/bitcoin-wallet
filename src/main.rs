@@ -1,17 +1,22 @@
-use bdk::{bitcoin::Network, database::MemoryDatabase, wallet, Wallet};
-use std::env;
-fn main() -> anyhow::Result<()> {
-    dotenv::from_filename(".env").ok();
-    dotenv::dotenv().ok();
-    let descriptor = env::var("WALLET_DESCRIPTOR").unwrap();
-    println!("Descriptor: {}", descriptor);
-    dbg!(descriptor);
+use bdk::bitcoin;
+use bdk::blockchain::ElectrumBlockchain;
+use bdk::database::MemoryDatabase;
+use bdk::electrum_client::Client;
+use bdk::{SyncOptions, Wallet};
+
+fn main() -> Result<(), bdk::Error> {
+    let client = Client::new("ssl://electrum.blockstream.info:60002")?;
+    let blockchain = ElectrumBlockchain::from(client);
     let wallet = Wallet::new(
-        descriptor,
-        None,
-        Network::Testnet,
+        "wpkh([c258d2e4/84h/1h/0h]tpubDDYkZojQFQjht8Tm4jsS3iuEmKjTiEGjG6KnuFNKKJb5A6ZUCUZKdvLdSDWofKi4ToRCwb9poe1XdqfUnP4jaJjCB2Zwv11ZLgSbnZSNecE/0/*)",
+        Some("wpkh([c258d2e4/84h/1h/0h]tpubDDYkZojQFQjht8Tm4jsS3iuEmKjTiEGjG6KnuFNKKJb5A6ZUCUZKdvLdSDWofKi4ToRCwb9poe1XdqfUnP4jaJjCB2Zwv11ZLgSbnZSNecE/1/*)"),
+        bitcoin::Network::Testnet,
         MemoryDatabase::default(),
     )?;
+
+    wallet.sync(&blockchain, SyncOptions::default())?;
+
+    println!("Descriptor balance: {} SAT", wallet.get_balance()?);
 
     Ok(())
 }
